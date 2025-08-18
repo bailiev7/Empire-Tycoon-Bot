@@ -191,10 +191,9 @@ async def callbacks_business_info_(callback: CallbackQuery):
     if rubles < business_price:
         await callback.answer(show_alert=True,
                               text=f"❌ К сожалению у вас недостаточно средств! ( {rubles_end} / {business_price_end} )")
+        return
 
-    cursor.execute("UPDATE game SET rubles = ?, profit = ? WHERE user_id = ?", (rubles-business_price, user_id,))
-    conn.commit()
-    cursor.execute("UPDATE user SET rubles = ? WHERE user_id = ?", (rubles-business_price, user_id,))
+    cursor.execute("UPDATE game SET rubles = ?, profit_hour = ? WHERE user_id = ?", (rubles-business_price, profit_hour, user_id,))
     conn.commit()
 
     now_time = int(time.time())
@@ -203,5 +202,5 @@ async def callbacks_business_info_(callback: CallbackQuery):
 
 
     await bot.edit_message_caption(message_id=callback.message.message_id, chat_id=callback.message.chat.id,
-                                   caption=f"✔ Вы успешно приобрели бизнес <b>{business_name}</b>, поздравляем!\n"
-                                           f"Теперь ваша прибыль составляет: {profit_hour_end}")
+                                   caption=f"✔ Вы успешно приобрели бизнес <b>{business_name}</b>, поздравляем! 🎉\n"
+                                           f"Теперь ваша прибыль со всех бизнесов составляет: <u>{profit_hour_end}</u> рублей 💸")
