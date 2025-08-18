@@ -14,6 +14,7 @@ from __init__ import *
 from handlers.start import start
 from handlers.business import business
 from handlers.farm import farm
+from handlers.shop_business import shop_business
 from handlers.registration import registration
 
 
@@ -63,6 +64,7 @@ async def main():
     dp.include_router(start)
     dp.include_router(registration)
     dp.include_router(business)
+    dp.include_router(shop_business)
     dp.include_router(farm)
     # dp.include_router(profile)
 

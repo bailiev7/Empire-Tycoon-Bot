@@ -10,17 +10,17 @@ from __init__ import *
 business = Router()  # [1]
 
 
-def db_table_business(user_id, business_id, business_name, business_level,
-                      business_stars, business_profit_hour, business_balance, business_last_time):
-    cursor.execute("INSERT INTO business (user_id, business_id, business_name, business_level, "
-                   "business_stars, business_profit_hour, business_balance, business_last_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                   (user_id, business_id, business_name, business_level,
-                    business_stars, business_profit_hour, business_balance, business_last_time))
+def db_table_business(user_id, business_id, business_name,
+                      business_profit_hour, business_last_time):
+    cursor.execute("INSERT INTO business (user_id, business_id, business_name, "
+                   "business_profit_hour, business_last_time) VALUES (?, ?, ?, ?, ?)",
+                   (user_id, business_id, business_name,
+                    business_profit_hour, business_last_time))
     conn.commit()
 
 
 @business.message(Command(commands="business"))  # [2]
-async def cmd_start(message: Message):
+async def cmd_business(message: Message):
     cursor.execute("SELECT * FROM game WHERE user_id = ?", (message.from_user.id,))
     result = cursor.fetchone()
 
@@ -69,13 +69,13 @@ async def callbacks_num(callback: CallbackQuery):
         await callback.answer("❌ У вас недостаточно средств!")
         return
 
-    cursor.execute("UPDATE game SET rubles = ?, profit_hour = '20000' WHERE user_id = ?",
+    cursor.execute("UPDATE game SET rubles = ?, profit_hour = '20000' tutorial = '1' WHERE user_id = ?",
                    (rubles - 250000, callback.from_user.id,))
     conn.commit()
 
     now_time = int(time.time())
 
-    db_table_business(callback.from_user.id, 1, "Шаурмечная", 1, 0, 20000, 0, now_time)
+    db_table_business(callback.from_user.id, 1, "Шаурмечная", 20000, now_time)
 
     await callback.message.edit_text("✔ Вы успешно приобрели свой первый бизнес. Поздравляем! 🎉\n"
                                      "Ваша прибыль в час составляет: 20.000 рублей 🤑\n\n\n"
