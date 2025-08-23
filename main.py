@@ -1,24 +1,27 @@
 import asyncio
-import logging
-from typing import MutableMapping, Callable, Dict, Any, Awaitable, Optional
+import time
+from typing import Callable, Dict, Any, Awaitable, Optional
 
-from aiogram import Bot, Dispatcher, types, BaseMiddleware
-from aiogram.filters.command import Command
+from aiogram import Dispatcher, BaseMiddleware
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import TelegramObject, User
+from aiogram.types import TelegramObject, User, CallbackQuery
 from cachetools import TTLCache
 
 from __init__ import *
-
-from handlers.start import start
 from handlers.business import business
 from handlers.farm import farm
-from handlers.shop_business import shop_business
+from handlers.my_business import my_business
+from handlers.well_dollar import well_dollar
+from handlers.premium_sub import premium_sub
+from handlers.up_business import up_business
+from handlers.profile import profile
 from handlers.registration import registration
+from handlers.shop_business import shop_business
+from handlers.start import start
 
 
-# Middleware с rate_limit и проверкой регистрации
+# Middleware с rate_limit и проверкой регистрации + защитой кнопок
 class Middleware(BaseMiddleware):
     RATE_LIMIT = 1.0  # секунды
 
@@ -28,10 +31,10 @@ class Middleware(BaseMiddleware):
         self.cache: TTLCache[int, None] = TTLCache(maxsize=10000, ttl=rate_limit)
 
     async def __call__(
-        self,
-        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-        m: TelegramObject,
-        data: Dict[str, Any],
+            self,
+            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+            m: TelegramObject,
+            data: Dict[str, Any],
     ) -> Any:
         user: Optional[User] = getattr(m, "from_user", None)
         state: FSMContext = data.get("state")
@@ -51,9 +54,38 @@ class Middleware(BaseMiddleware):
                 await m.reply("Вы не зарегистрировались в системе\nЗарегистрируйтесь по команде: /registration")
                 return
 
+        cursor.execute("SELECT premium_until FROM game WHERE user_id = ?", (user.id,))
+        premium_until = cursor.fetchone()[0]
+
+        now = int(time.time())
+
+        if premium_until < now:
+            cursor.execute("UPDATE game SET premium_status = 'False', premium_until = '0' WHERE user_id = ?", (user.id,))
+            conn.commit()
+
+            await bot.send_message(
+                reply_to_message_id=m.message_id,
+                chat_id=m.chat.id,
+                text="⌛ К сожалению, срок вашей <b><u>PREMIUM</u></b> подписки истёк.\n"
+                     "Для продления подписки воспользуйтесь командой <u><b>/premium</b></u>"
+            )
+
+        # 🔒 Проверка user_id в callback_data
+        if isinstance(m, CallbackQuery) and m.data:
+            parts = m.data.split("_")
+            for p in reversed(parts):  # идем с конца, т.к. id чаще всего в конце
+                if p.isdigit():
+                    target_id = int(p)
+                    if target_id != user.id:
+                        await m.answer("❌ Кнопка была адресована не вам.", show_alert=True)
+                        return
+
+                    break  # нашли число — проверили и хватит
+
         return await handler(m, data)
 
-    async def is_registered(self, user_id: int) -> bool:
+    @staticmethod
+    async def is_registered(user_id: int) -> bool:
         cursor.execute("SELECT user_id FROM user WHERE user_id = ?", (user_id,))
         return cursor.fetchone() is not None
 
@@ -64,11 +96,17 @@ async def main():
     dp.include_router(start)
     dp.include_router(registration)
     dp.include_router(business)
+    dp.include_router(well_dollar)
+    dp.include_router(profile)
+    dp.include_router(up_business)
+    dp.include_router(premium_sub)
+    dp.include_router(my_business)
     dp.include_router(shop_business)
     dp.include_router(farm)
     # dp.include_router(profile)
 
     dp.message.outer_middleware(Middleware())
+    dp.callback_query.outer_middleware(Middleware())
 
     await bot.send_message(1409698085, "Бот запущен ✅")
     await dp.start_polling(bot)
