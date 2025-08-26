@@ -61,7 +61,7 @@ async def callbacks_num(callback: CallbackQuery):
         await callback.answer("❌ У вас недостаточно средств!")
         return
 
-    cursor.execute("UPDATE game SET rubles = ?, profit_hour = '20000' tutorial = '1' WHERE user_id = ?",
+    cursor.execute("UPDATE game SET rubles = ?, profit_hour = '20000', tutorial = '1' WHERE user_id = ?",
                    (rubles - 250000, callback.from_user.id,))
     conn.commit()
 

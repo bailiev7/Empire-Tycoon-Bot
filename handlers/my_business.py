@@ -223,7 +223,7 @@ def get_business_info_markup(business_id: int, user_id: int):
         f"💳 Состояние: {collect_text}\n\n"
         f"✨ Уровень: {level}\n"
         f"⚡ Опыт:\n{render_xp_bar(exp)} ({exp})\n"
-        f"{'✔️' if exp >= 100 else '❌'} Стоимость улучшения {price}$\n"
+        f"{'✔️' if exp >= 100 else '❌'} Стоимость улучшения {price:,}$\n"
         f"⭐️ Звёзды: {stars}\n"
     )
 

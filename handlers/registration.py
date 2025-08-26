@@ -1,6 +1,5 @@
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.fsm import state
 from aiogram.types import Message
 from __init__ import cursor, conn
 from aiogram.fsm.state import State, StatesGroup
@@ -11,18 +10,22 @@ import re
 
 registration = Router()  # [1]
 
+
 def db_table_user(user_id, name_profile, name_bot, age):
-    cursor.execute("INSERT INTO user (user_id, name_profile, name_bot, age) VALUES (?, ?, ?, ?)", (user_id, name_profile, name_bot, age))
+    cursor.execute("INSERT INTO user (user_id, name_profile, name_bot, age) VALUES (?, ?, ?, ?)",
+                   (user_id, name_profile, name_bot, age))
     conn.commit()
 
     cursor.execute("INSERT INTO game (user_id) VALUES (?)", (user_id,))
     conn.commit()
 
+
 class Registration(StatesGroup):
     name = State()
     age = State()
 
-@registration.message(Command(commands=("рег", "регистрация", "registration", "reg"))) # [2]
+
+@registration.message(Command(commands=("рег", "регистрация", "registration", "reg")))  # [2]
 async def cmd_registration(message: Message, state: FSMContext):
     cursor.execute("Select * FROM user WHERE user_id = ?", (message.from_user.id,))
     result = cursor.fetchone()
@@ -33,6 +36,7 @@ async def cmd_registration(message: Message, state: FSMContext):
 
     else:
         await message.reply("Игрок, ты уже зарегистрирован в нашей игре!")
+
 
 @registration.message(Registration.name)
 async def process_name(message: Message, state: FSMContext):
@@ -70,12 +74,15 @@ async def handle_cancel(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text("Игрок, введи своё имя! Допустимы только русские или английские буквы.")
     await state.set_state(Registration.name)
 
+
 @registration.callback_query(F.data == "confirm")
 async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     name = data.get("name")
-    await callback.message.edit_text(f"Отлично, имя {name} сохранено!\nИдем дальше. Укажи свой возраст! (подсказка: играть можно от 16 лет)")
+    await callback.message.edit_text(
+        f"Отлично, имя {name} сохранено!\nИдем дальше. Укажи свой возраст! (подсказка: играть можно от 16 лет)")
     await state.set_state(Registration.age)
+
 
 @registration.message(Registration.age)
 async def process_name(message: Message, state: FSMContext):
@@ -85,10 +92,11 @@ async def process_name(message: Message, state: FSMContext):
         return
 
     if int(user_age) < 16:
-        await message.reply("Наш бот доступен пользователям от 16 лет. Попробуй снова через пару лет или введи его сейчас")
+        await message.reply(
+            "Наш бот доступен пользователям от 16 лет. Попробуй снова через пару лет или введи его сейчас")
         return
 
-    elif int(user_age) > 50 and int(user_age) < 100:
+    elif 50 < int(user_age) < 100:
         await message.reply("Кажется вы слишком старый для этой игры. Попробуйте снова")
         return
 
@@ -103,5 +111,3 @@ async def process_name(message: Message, state: FSMContext):
     await message.reply(f"Отлично, возраст {user_age} сохранен")
 
     db_table_user(message.from_user.id, message.from_user.first_name, name, user_age)
-
-

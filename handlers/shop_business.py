@@ -23,6 +23,7 @@ def db_table_business(user_id, business_id, business_name, business_profit_hour,
 
 @shop_business.callback_query(F.data.startswith("back_to_shop_"))
 @shop_business.message(Command(commands="shop_business"))
+@shop_business.message(F.text.casefold() == "магазин")
 async def cmd_shop_business(message: Message | CallbackQuery):
     cursor.execute(
         "SELECT business_id, business_name, business_price, business_profit_hour "

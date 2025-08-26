@@ -20,6 +20,11 @@ from handlers.registration import registration
 from handlers.shop_business import shop_business
 from handlers.start import start
 
+from handlers.clans.clan_create import clan_create
+from handlers.clans.my_clan import my_clan
+from handlers.clans.clan_kb import clan_kb
+from handlers.clans.clan_settings import clan_settings
+
 
 # Middleware с rate_limit и проверкой регистрации + защитой кнопок
 class Middleware(BaseMiddleware):
@@ -55,20 +60,23 @@ class Middleware(BaseMiddleware):
                 return
 
         cursor.execute("SELECT premium_until FROM game WHERE user_id = ?", (user.id,))
-        premium_until = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        if result:
+            premium_until = result[0]
 
-        now = int(time.time())
+            now = int(time.time())
 
-        if premium_until < now:
-            cursor.execute("UPDATE game SET premium_status = 'False', premium_until = '0' WHERE user_id = ?", (user.id,))
-            conn.commit()
+            if premium_until < now and premium_until != 0:
+                cursor.execute("UPDATE game SET premium_status = 'False', premium_until = '0' WHERE user_id = ?",
+                               (user.id,))
+                conn.commit()
 
-            await bot.send_message(
-                reply_to_message_id=m.message_id,
-                chat_id=m.chat.id,
-                text="⌛ К сожалению, срок вашей <b><u>PREMIUM</u></b> подписки истёк.\n"
-                     "Для продления подписки воспользуйтесь командой <u><b>/premium</b></u>"
-            )
+                await bot.send_message(
+                    reply_to_message_id=m.message_id,
+                    chat_id=m.chat.id,
+                    text="⌛ К сожалению, срок вашей <b><u>PREMIUM</u></b> подписки истёк.\n"
+                         "Для продления подписки воспользуйтесь командой <u><b>/premium</b></u>"
+                )
 
         # 🔒 Проверка user_id в callback_data
         if isinstance(m, CallbackQuery) and m.data:
@@ -103,7 +111,11 @@ async def main():
     dp.include_router(my_business)
     dp.include_router(shop_business)
     dp.include_router(farm)
-    # dp.include_router(profile)
+
+    dp.include_router(my_clan)
+    dp.include_router(clan_kb)
+    dp.include_router(clan_settings)
+    dp.include_router(clan_create)
 
     dp.message.outer_middleware(Middleware())
     dp.callback_query.outer_middleware(Middleware())

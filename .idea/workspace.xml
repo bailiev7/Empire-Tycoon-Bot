@@ -5,16 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="20a98d7c-b236-45a2-b0fa-8a34da86a354" name="Changes" comment="new project">
-      <change afterPath="$PROJECT_DIR$/handlers/my_business.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/premium_sub.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/profile.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/up_business.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/handlers/well_dollar.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/image/business_4.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/handlers/clans/clan_create.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/handlers/clans/clan_kb.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/handlers/clans/clan_settings.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/handlers/clans/my_clan.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/database/database.db" beforeDir="false" afterPath="$PROJECT_DIR$/database/database.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/handlers/business.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/handlers/my_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/my_business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/handlers/registration.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/registration.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/handlers/shop_business.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/shop_business.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/handlers/start.py" beforeDir="false" afterPath="$PROJECT_DIR$/handlers/start.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -31,6 +32,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
@@ -116,7 +120,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755534660367</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="new project">
+      <option name="closed" value="true" />
+      <created>1755988765737</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1755988765737</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -134,5 +146,16 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="new project" />
     <option name="LAST_COMMIT_MESSAGE" value="new project" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/handlers/clans/clan_create.py</url>
+          <line>104</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
