@@ -3,7 +3,7 @@ import time
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 
 from __init__ import *  # подключение к БД
 
@@ -29,11 +29,11 @@ async def cmd_profile(message: Message | CallbackQuery):
     text_message = [f"Профиль <b>{name_user}</b>:\n\n"]
 
     if premium_status == "True":
-        premium_status = "активна ✔"
         now = int(time.time())
         remaining = premium_until - now
 
         days = remaining // 86400  # 1 день = 86400 секунд
+        premium_status = f"активна ✔ (осталось {days} дн.)"
 
     else:
         premium_status = "неактивна ❌"
@@ -52,8 +52,18 @@ async def cmd_profile(message: Message | CallbackQuery):
     text_message.append(f"💳 Баланс рублей: <u>{rubles:,}</u>₽\n")
     text_message.append(f"💵 Баланс долларов: <u>{dollars:,}</u>$\n")
     text_message.append(f"💹 Баланс биткоинов: <u>{round(bitcoins, 1):,}</u>₿\n")
-    text_message.append(f"📈 <u><b>PREMIUM</b></u> подписка: {premium_status} (осталось {days} дн.)")
+    text_message.append(f"📈 <u><b>PREMIUM</b></u> подписка: {premium_status}")
+
+    # Клавиатура подтверждения
+    inline_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✍ Изменить данные", callback_data=f"change_date_{message.from_user.id}"),
+                InlineKeyboardButton(text="🔗 Реферальная ссылка", callback_data=f"referal_link_{message.from_user.id}")
+            ]
+        ]
+    )
 
     text_message = "".join(text_message)
 
-    await message.reply(text_message)
+    await message.reply(text_message, reply_markup=inline_kb)

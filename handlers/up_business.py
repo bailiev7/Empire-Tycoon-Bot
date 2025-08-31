@@ -109,11 +109,9 @@ async def button_up_business(callback: CallbackQuery):
     cursor.execute("UPDATE business SET business_level = ?, business_profit_hour = ?,  business_exp = '0', business_bitcoin_profit = ? WHERE user_id = ? AND business_id = ?", (business_new_level, business_profit_hour_new, business_bitcoin_profit_new, user_id, business_id,))
     conn.commit()
 
-    cursor.execute("SELECT")
-
     cursor.execute(
-        "UPDATE gmae SET profit_hour = ? WHERE user_id = ?",
-        (profit_hour-business_profit_hour+business_profit_hour_new,))
+        "UPDATE game SET profit_hour = ? WHERE user_id = ?",
+        (profit_hour-business_profit_hour+business_profit_hour_new, callback.from_user.id,))
     conn.commit()
 
     inline_kb = InlineKeyboardMarkup(

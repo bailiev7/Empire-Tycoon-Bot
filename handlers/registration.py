@@ -1,12 +1,12 @@
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message
-from __init__ import cursor, conn
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import CallbackQuery
 import re
+from __init__ import *
 
 registration = Router()  # [1]
 
@@ -26,6 +26,7 @@ class Registration(StatesGroup):
 
 
 @registration.message(Command(commands=("рег", "регистрация", "registration", "reg")))  # [2]
+@registration.message(Command("/registration"))  # [2]
 async def cmd_registration(message: Message, state: FSMContext):
     cursor.execute("Select * FROM user WHERE user_id = ?", (message.from_user.id,))
     result = cursor.fetchone()
@@ -45,7 +46,7 @@ async def process_name(message: Message, state: FSMContext):
     # Разрешаем буквы (рус/англ), пробелы, точки, подчеркивания и дефисы
     if not re.fullmatch(r"[a-zA-Zа-яА-ЯёЁ ._-]{5,20}", user_name):
         await message.reply(
-            "Имя может содержать только русские или английские буквы, а также пробелы, точки, дефисы и подчёркивания.\n"
+            "❌ Имя может содержать только русские или английские буквы, а также пробелы, точки, дефисы и подчёркивания.\n"
             "Допустимая длина — от 5 до 20 символов."
         )
         return
@@ -57,8 +58,8 @@ async def process_name(message: Message, state: FSMContext):
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm"),
-                InlineKeyboardButton(text="🔄 Изменить", callback_data="change")
+                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_registration__{message.from_user.id}"),
+                InlineKeyboardButton(text="🔄 Изменить", callback_data=f"change_registration__{message.from_user.id}")
             ]
         ]
     )
@@ -69,13 +70,12 @@ async def process_name(message: Message, state: FSMContext):
     )
 
 
-@registration.callback_query(F.data == "change")
+@registration.callback_query(F.data.startswith("change_registration_"))
 async def handle_cancel(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text("Игрок, введи своё имя! Допустимы только русские или английские буквы.")
-    await state.set_state(Registration.name)
 
 
-@registration.callback_query(F.data == "confirm")
+@registration.callback_query(F.data.startswith("confirm_registration_"))
 async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     name = data.get("name")
@@ -107,7 +107,39 @@ async def process_name(message: Message, state: FSMContext):
     await state.update_data(age=message.text)
     data = await state.get_data()
     name = data.get("name")
+    invited_id = data.get("invited_id")
+
     await state.clear()
-    await message.reply(f"Отлично, возраст {user_age} сохранен")
+
+    if invited_id:
+        cursor.execute("SELECT referal_count, referal_level FROM game WHERE user_id = ?", (invited_id,))
+        result = cursor.fetchone()
+
+        referal_count = int(result[0])
+        referal_level = int(result[1])
+
+        referal_count += 1
+
+        if referal_count == referal_level * 10:
+            referal_level += 1
+            referal_count = 0
+
+        cursor.execute("UPDATE game SET referal_level = ?, referal_count = ? WHERE user_id = ?", (referal_level, referal_count, invited_id))
+        conn.commit()
+
+        db_table_user(message.from_user.id, message.from_user.first_name, name, user_age)
+
+        cursor.execute("UPDATE game SET rubles = '350000' WHERE user_id = ?", (message.from_user.id,))
+        conn.commit()
+
+        await message.reply(f"👤 Отлично, возраст {user_age} сохранен.\n"
+                            f"✔Вы успешно зарегистрировались по реферальной ссылке и получили +100,000₽!\n"
+                            f"💵 На вашем балансе 350,000₽, попробуйте посетить магазин (<u><b>/shop_business</b></u>)")
+
+        return
+
+    await message.reply(f"👤 Отлично, возраст {user_age} сохранен.\n"
+                        f"✔Вы успешно зарегистрировались!\n"
+                        f"💵 На вашем балансе 250,000₽, попробуйте посетить магазин (<u><b>/shop_business</b></u>)")
 
     db_table_user(message.from_user.id, message.from_user.first_name, name, user_age)

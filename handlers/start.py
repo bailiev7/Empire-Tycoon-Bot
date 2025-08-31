@@ -1,14 +1,20 @@
 from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from __init__ import *
 
 start = Router()  # [1]
 
 
+class Invite(StatesGroup):
+    invited_id = State()
+
+
 @start.message(CommandStart(deep_link=True))
-async def cmd_start_deeplink(message: Message, command: CommandObject):
+async def cmd_start_deeplink(message: Message, command: CommandObject, state: FSMContext):
     payload = command.args  # сюда прилетает всё, что после ?start=
 
     if not payload:
@@ -23,7 +29,7 @@ async def cmd_start_deeplink(message: Message, command: CommandObject):
             cursor.execute("SELECT profit_hour, clan_id FROM game WHERE user_id = ?", (message.from_user.id,))
             profit_hour, clan_id_user = cursor.fetchone()
 
-            if profit_hour < 100000:
+            if profit_hour < 50000:
                 await message.reply("❌ К сожалению у вас недостаточно прибыли в час для вступления в кланы")
                 return
 
@@ -45,7 +51,8 @@ async def cmd_start_deeplink(message: Message, command: CommandObject):
             cursor.execute("SELECT name_bot FROM user WHERE user_id = ?", (inviter_id,))
             name_bot = cursor.fetchone()[0]
 
-            cursor.execute("UPDATE game SET clan_id = ?, clan_status = ? WHERE user_id = ?", (clan_id, "участник ⭐", message.from_user.id,))
+            cursor.execute("UPDATE game SET clan_id = ?, clan_status = ? WHERE user_id = ?",
+                           (clan_id, "участник ⭐", message.from_user.id,))
             conn.commit()
 
             # тут можешь сразу добавить игрока в клан в базе
@@ -56,6 +63,27 @@ async def cmd_start_deeplink(message: Message, command: CommandObject):
 
         except:
             await message.answer("❌ Ошибка при обработке ссылки. Попробуй ещё раз.")
+
+    elif payload.startswith("invite_"):
+        cursor.execute("SELECT user_id FROM game WHERE user_id = ?", (message.from_user.id,))
+        if cursor.fetchone():
+            await message.reply("❌ Вы уже зарегистрированы в боте!")
+            return
+
+        _, invited_id = payload.split("_")
+
+        cursor.execute("SELECT name_bot FROM user WHERE user_id = ?", (invited_id,))
+        name_bot = cursor.fetchone()[0]
+
+        await state.update_data(invited_id=invited_id)
+
+        await message.reply(
+            f"Вы успешно вступили по реферальной ссылке игрока <a href='tg://user?id={invited_id}'>{name_bot}</a>\n"
+            f"Чтобы вам выдался бонус, а игроку засчиталось приглашение, пройдите регистрацию написав <u><b>/registration</b></u>!"
+        )
+
+
+
     else:
         await message.answer(f"Ты пришёл по ссылке с параметром: {payload}")
 

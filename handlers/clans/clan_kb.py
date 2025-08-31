@@ -26,7 +26,7 @@ async def cmd_clan_list(callback: CallbackQuery):
     # Проверяем, разрешен ли просмотр списка
     cursor.execute("SELECT clan_list_status FROM clans WHERE clan_id = ?", (clan_id,))
     clan_list_status = cursor.fetchone()[0]
-    if not clan_list_status:  # False или 0
+    if clan_list_status == "False":  # False или 0
         await callback.answer("❌ Список участников скрыт создателем клана!")
         return
 

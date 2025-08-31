@@ -21,9 +21,10 @@ def db_table_business(user_id, business_id, business_name, business_profit_hour,
     conn.commit()
 
 
+@shop_business.callback_query(F.data.startswith("shop_business_"))
 @shop_business.callback_query(F.data.startswith("back_to_shop_"))
 @shop_business.message(Command(commands="shop_business"))
-@shop_business.message(F.text.casefold() == "магазин")
+@shop_business.message(F.text.casefold() == "магазин бизнесов")
 async def cmd_shop_business(message: Message | CallbackQuery):
     cursor.execute(
         "SELECT business_id, business_name, business_price, business_profit_hour "
@@ -58,17 +59,21 @@ async def cmd_shop_business(message: Message | CallbackQuery):
                 callback_data=f"business_info_{business_id}_{message.from_user.id}"
             )
         )
-    builder.adjust(3)
+    builder.adjust(2)
 
     if isinstance(message, Message):
         await message.reply(
-            text=f"📋 <b>Список бизнесов:</b>\n\n{text_message}",
+            text=f"📋 <b>Список бизнесов:</b>\n"
+                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                 f"{text_message}",
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
     else:
         await bot.send_message(
-            text=f"📋 <b>Список бизнесов:</b>\n\n{text_message}",
+            text=f"📋 <b>Список бизнесов:</b>\n"
+                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                 f"{text_message}",
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
             chat_id=message.message.chat.id
@@ -120,8 +125,8 @@ async def callbacks_business_info_(callback: CallbackQuery):
     user_id = action[3]
 
     cursor.execute(
-        "SELECT * FROM business WHERE user_id = ?",
-        (user_id,))
+        "SELECT * FROM business WHERE user_id = ? AND business_id = ?",
+        (user_id, business_id,))
     result = cursor.fetchone()
 
     if result is not None:
@@ -162,4 +167,5 @@ async def callbacks_business_info_(callback: CallbackQuery):
 
     await bot.edit_message_caption(message_id=callback.message.message_id, chat_id=callback.message.chat.id,
                                    caption=f"✔ Вы успешно приобрели бизнес <b>{business_name}</b>, поздравляем! 🎉\n"
-                                           f"Теперь ваша прибыль со всех бизнесов составляет: <u>{profit_hour_end}</u> рублей 💸")
+                                           f"Теперь ваша прибыль со всех бизнесов составляет: <u>{profit_hour_end}</u>₽/ч 💸\n\n"
+                                           f"👤 Посмотреть бизнес можно по команде <u><b>/my_business</b></u>")

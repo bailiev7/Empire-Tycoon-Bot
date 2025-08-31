@@ -17,13 +17,21 @@ from handlers.premium_sub import premium_sub
 from handlers.up_business import up_business
 from handlers.profile import profile
 from handlers.registration import registration
+from handlers.shop import shop
 from handlers.shop_business import shop_business
 from handlers.start import start
+from handlers.referal import referal
+from handlers.top import top
+from handlers.change_date import change_date
 
 from handlers.clans.clan_create import clan_create
 from handlers.clans.my_clan import my_clan
 from handlers.clans.clan_kb import clan_kb
 from handlers.clans.clan_settings import clan_settings
+
+from handlers.casino import casino
+from handlers.blackjack import blackjack
+from handlers.poker import poker
 
 
 # Middleware с rate_limit и проверкой регистрации + защитой кнопок
@@ -55,9 +63,9 @@ class Middleware(BaseMiddleware):
         is_registered = await self.is_registered(user.id) if user else True
 
         if not is_registered and current_state is None:
-            if hasattr(m, "text") and m.text not in ["/рег", "/регистрация", "/registration", "/reg"]:
-                await m.reply("Вы не зарегистрировались в системе\nЗарегистрируйтесь по команде: /registration")
-                return
+            if hasattr(m, "text"):
+                if m.text not in ["/рег", "/регистрация", "/registration", "/reg"] or not (m.text.startswith("/start")):
+                    return await handler(m, data)
 
         cursor.execute("SELECT premium_until FROM game WHERE user_id = ?", (user.id,))
         result = cursor.fetchone()
@@ -109,13 +117,21 @@ async def main():
     dp.include_router(up_business)
     dp.include_router(premium_sub)
     dp.include_router(my_business)
+    dp.include_router(shop)
     dp.include_router(shop_business)
     dp.include_router(farm)
+    dp.include_router(referal)
+    dp.include_router(top)
+    dp.include_router(change_date)
 
     dp.include_router(my_clan)
     dp.include_router(clan_kb)
     dp.include_router(clan_settings)
     dp.include_router(clan_create)
+
+    dp.include_router(casino)
+    dp.include_router(blackjack)
+    dp.include_router(poker)
 
     dp.message.outer_middleware(Middleware())
     dp.callback_query.outer_middleware(Middleware())

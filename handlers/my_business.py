@@ -97,6 +97,7 @@ async def render_businesses(user_id: int, message: Message | CallbackQuery):
         business_texts.append(
             f"<u>{business_id}</u>. <b>{business_name}</b>\n"
             f"💸 Прибыль в рублях: {business_profit_hour:,}{premium_text}₽/ч\n"
+            f"💰 Статус сбора: {business_profit}\n"
             f"💹 Прибыль в биткоинах: {business_bitcoin_profit:,}₿/ч\n"
             f"<b>ОСОБЫЕ УЛУЧШЕНИЯ</b>\n"
             f"✨ Уровень: {business_level}\n"
