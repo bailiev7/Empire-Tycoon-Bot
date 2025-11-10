@@ -1,0 +1,8 @@
+aiogram==3.12.0
+SQLAlchemy==2.0.23
+asyncpg
+pandas
+matplotlib
+reportlab
+apscheduler
+python-dotenv
