@@ -22,7 +22,8 @@ async def cmd_change_date(callback: CallbackQuery):
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Изменить имя", callback_data=f"change_name_{callback.from_user.id}")
+                InlineKeyboardButton(
+                    text="Изменить имя", callback_data=f"change_name_{callback.from_user.id}")
             ]
         ]
     )
@@ -34,18 +35,44 @@ async def cmd_change_date(callback: CallbackQuery):
 
 @change_date.callback_query(F.data.startswith("change_name_"))
 async def cmd_change_name(callback: CallbackQuery, state: FSMContext):
-    cursor.execute("SELECT bitcoins FROM game WHERE user_id = ?", (callback.from_user.id,))
+    cursor.execute(
+        "SELECT value FROM inventory WHERE user_id = ? AND item_type = 'nick'", (callback.from_user.id,))
+    result = cursor.fetchone()
+
+    nick = None
+
+    if result:
+        nick = result[0]
+
+    cursor.execute("SELECT bitcoins FROM game WHERE user_id = ?",
+                   (callback.from_user.id,))
     bitcoins = cursor.fetchone()[0]
 
-    if bitcoins < 5:
-        await bot.send_message(f"❌ У вас недостаточно BTC ({bitcoins}/5)")
-        return
+    if nick == 0:
+        if bitcoins < 5:
+            await bot.send_message(f"❌ У вас недостаточно BTC ({bitcoins}/5)")
+            return
+
+        text_message = "⚠ Изменение имени стоит 5₿. Введите желаемый ник, а затем подтвердите изменение!"
+
+    else:
+        text_message = "⚠ Изменение имени стоит 5₿, но у вас есть токен смены имени. Он потратится вместо BTC!.\nВведите желаемый ник, а затем подтвердите изменение!"
+
+    inline_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="❌ Отменить", callback_data=f"delete_message_{callback.from_user.id}")
+            ]
+        ]
+    )
 
     await state.set_state(Change_Date.name)
     await bot.edit_message_text(
         chat_id=callback.message.chat.id,
         message_id=callback.message.message_id,
-        text="⚠ Изменение имени стоит 5₿. Введите желаемый ник, а затем подтвердите изменение!"
+        text=text_message,
+        reply_markup=inline_kb
     )
 
 
@@ -68,11 +95,14 @@ async def process_name(message: Message, state: FSMContext):
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_rename_{message.from_user.id}"),
-                InlineKeyboardButton(text="🔄 Изменить", callback_data=f"change_rename_{message.from_user.id}")
+                InlineKeyboardButton(
+                    text="✅ Подтвердить", callback_data=f"confirm_rename_{message.from_user.id}"),
+                InlineKeyboardButton(
+                    text="🔄 Изменить", callback_data=f"change_name_{message.from_user.id}")
             ],
             [
-                InlineKeyboardButton(text="❌ Отменить", callback_data=f"delete_message_{message.from_user.id}")
+                InlineKeyboardButton(
+                    text="❌ Отменить", callback_data=f"delete_message_{message.from_user.id}")
             ]
         ]
     )
@@ -85,22 +115,39 @@ async def process_name(message: Message, state: FSMContext):
 
 @change_date.callback_query(F.data.startswith("confirm_rename_"))
 async def handle_confirm(callback: CallbackQuery, state: FSMContext):
+    nick = None
     data = await state.get_data()
     name = data.get("name")
 
-    cursor.execute("SELECT bitcoins FROM game WHERE user_id = ?", (callback.from_user.id,))
+    cursor.execute(
+        "SELECT value FROM inventory WHERE user_id = ? AND item_type = 'nick'", (callback.from_user.id,))
+    nick = cursor.fetchone()[0]
+
+    cursor.execute("SELECT bitcoins FROM game WHERE user_id = ?",
+                   (callback.from_user.id,))
     bitcoins = cursor.fetchone()[0]
 
-    cursor.execute("UPDATE game SET bitcoins = ? WHERE user_id = ?", (bitcoins-5, callback.from_user.id,))
-    cursor.execute("UPDATE user SET name_bot = ? WHERE user_id = ?", (name, callback.from_user.id,))
+    if nick == 0:
+        cursor.execute("UPDATE game SET bitcoins = ? WHERE user_id = ?",
+                       (bitcoins-5, callback.from_user.id,))
+        text_message = f"Отлично, имя изменено на {name}!\nС вашего баланса списано 5₿"
+
+    else:
+        if bitcoins < 5:
+            await callback.answer("❌ У вас недостаточно BTC!")
+            await state.clear()
+            return
+
+        cursor.execute("UPDATE inventory SET nick = ? WHERE user_id = ?",
+                       (nick-1, callback.from_user.id,))
+        text_message = f"Отлично, имя изменено на {name}!\nВы потратили 1 токен смены имени!"
+
+    cursor.execute("UPDATE user SET name_bot = ? WHERE user_id = ?",
+                   (name, callback.from_user.id,))
     conn.commit()
 
     await callback.message.edit_text(
-        f"Отлично, имя изменено на {name}!\nС вашего баланса списано 5₿")
+        text=text_message
+    )
 
     await state.clear()
-
-
-@change_date.callback_query(F.data.startswith("change_rename_"))
-async def handle_cancel(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("⚠ Введите желаемый ник, а затем подтвердите изменение!")

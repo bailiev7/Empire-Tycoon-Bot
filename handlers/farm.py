@@ -32,8 +32,33 @@ async def cmd_farm(message: Message):
             f"Вы успешно нафармили 10 рублей!\n\nПока вы фармите в этой группе, вы получаете вдвое больше!!"
         )
     else:
+        cursor.execute("SELECT premium_status FROM game WHERE user_id = ?", (message.from_user.id,))
+        premium_status = cursor.fetchone()[0]
+
+        if premium_status == "True":
+            cursor.execute("UPDATE game SET rubles = ? WHERE user_id = ?", (rubles + 10, message.from_user.id,))
+            conn.commit()
+            await message.reply(
+                f"Вы успешно нафармили 10 рублей благодаря <b><u>PREMIUM</u></b> статусу!"
+            )
+            return
+
         cursor.execute("UPDATE game SET rubles = ? WHERE user_id = ?", (rubles + 5, message.from_user.id,))
         conn.commit()
+
+        cursor.execute("SELECT tutorial FROM game WHERE user_id = ?", (message.from_user.id,))
+        tutorial = cursor.fetchone()[0]
+
+        if tutorial == 2:
+            cursor.execute("UPDATE game SET tutorial = '3' WHERE user_id = ?", (message.from_user.id,))
+            conn.commit()
+
+            await message.reply(
+                f"Вы успешно нафармили 5 рублей!\n\nЧтобы получить фарм х2 вам необходим <b><u>PREMIUM</u></b> статус или вступить в нашу беседу!\n\n"
+                f"Теперь перейдите в профиль. Введите команду <b><u>/profile</u></b>"
+            )
+            return
+
         await message.reply(
-            f"Вы успешно нафармили 5 рублей!\n\nДля фарма в х2 вступите в нашу группу и фармите там!"
+            f"Вы успешно нафармили 5 рублей!\n\nЧтобы получить фарм х2 вам необходим <b><u>PREMIUM</u></b> статус или вступить в нашу беседу!"
         )

@@ -31,22 +31,25 @@ async def cmd_shop_business(message: Message | CallbackQuery):
         "FROM business_info ORDER BY business_id ASC"
     )
     result = cursor.fetchall()
+    cursor.execute("SELECT premium_status FROM game WHERE user_id = ?", (message.from_user.id,))
+    premium_status = cursor.fetchone()[0]
 
     # собираем список строк для сообщения
     business_texts = []
     for _, name, price, profit in result:
-        price_fmt = f"{price:,}".replace(",", ".")
-        profit_fmt = f"{profit:,}".replace(",", ".")
+        if premium_status == "True":
+            price -= price * 0.1
+
         business_texts.append(
-            f"<b>{name}</b>\n💰 Цена: <u>{price_fmt}</u>\n📈 Прибыль: <u>{profit_fmt}</u>/час\n"
+            f"<b>{name}</b>\n💰 Цена: <u>{price:,}</u>\n📈 Прибыль: <u>{profit:,}</u>/час\n"
         )
 
     cursor.execute("SELECT rubles FROM game WHERE user_id = ?", (message.from_user.id,))
     result2 = cursor.fetchone()
     rubles = result2[0]
-    balance_pretty = f"{rubles:,}".replace(",", ".")
-
-    business_texts.append(f"\n💸 Твой баланс: <u>{balance_pretty}</u> рублей")
+    if premium_status == "True":
+        business_texts.append("🌟 Цены снижены на 10% за счет <b><u>PREMIUM</u></b> статуса!")
+    business_texts.append(f"\n💸 Твой баланс: <u>{rubles:,}</u> рублей")
 
     text_message = "\n".join(business_texts)
 
@@ -64,7 +67,6 @@ async def cmd_shop_business(message: Message | CallbackQuery):
     if isinstance(message, Message):
         await message.reply(
             text=f"📋 <b>Список бизнесов:</b>\n"
-                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                  f"{text_message}",
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
@@ -72,7 +74,6 @@ async def cmd_shop_business(message: Message | CallbackQuery):
     else:
         await bot.send_message(
             text=f"📋 <b>Список бизнесов:</b>\n"
-                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                  f"{text_message}",
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
@@ -93,6 +94,27 @@ async def callbacks_business_info_(callback: CallbackQuery):
     result = cursor.fetchone()
     business_name, business_desc, business_price, business_profit_hour = result
 
+    cursor.execute("SELECT premium_status FROM game WHERE user_id = ?", (user_id,))
+    premium_status = cursor.fetchone()[0]
+
+    if premium_status == "True":
+        business_price -= business_price * 0.1
+        text_message = f"<u>{business_id}</u> - <b>{business_name}</b>\n"\
+                       f"---------------------\n"\
+                       f"Описание: <b>{business_desc}</b>\n"\
+                       f"---------------------\n"\
+                       f"Стоимость: <u>{business_price:,}</u> руб.\n"\
+                       f"Прибыль: <u>{business_profit_hour:,}</u> руб/ч\n\n"\
+                       f"🌟 Цены снижены на 10% за счет <b><u>PREMIUM</u></b> статуса!"
+
+    else:
+        text_message = f"<u>{business_id}</u> - <b>{business_name}</b>\n"\
+                       f"---------------------\n"\
+                       f"Описание: <b>{business_desc}</b>\n"\
+                       f"---------------------\n"\
+                       f"Стоимость: <u>{business_price:,}</u> руб.\n"\
+                       f"Прибыль: <u>{business_profit_hour:,}</u> руб/ч"
+
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -103,19 +125,14 @@ async def callbacks_business_info_(callback: CallbackQuery):
         ]
     )
 
-    business_price = f"{business_price:,}".replace(",", ".")
-    business_profit_hour = f"{business_profit_hour:,}".replace(",", ".")
-
     media_file = f"image/business_{business_id}.png"
     photo = FSInputFile(media_file, filename=os.path.basename(media_file))
 
-    await bot.send_photo(chat_id=callback.message.chat.id, photo=photo,
-                         caption=f"<u>{business_id}</u> - <b>{business_name}</b>\n"
-                                 f"---------------------\n"
-                                 f"Описание: <b>{business_desc}</b>\n"
-                                 f"---------------------\n"
-                                 f"Стоимость: <u>{business_price}</u> руб.\n"
-                                 f"Прибыль: <u>{business_profit_hour}</u> руб/ч", reply_markup=inline_kb)
+    await bot.send_photo(
+        chat_id=callback.message.chat.id, photo=photo,
+        caption=text_message,
+        reply_markup=inline_kb
+    )
 
 
 @shop_business.callback_query(F.data.startswith("buy_business_"))
@@ -142,19 +159,18 @@ async def callbacks_business_info_(callback: CallbackQuery):
 
     business_name, business_price, business_profit_hour = result
 
-    cursor.execute("SELECT rubles, profit_hour FROM game WHERE user_id = ?", (callback.from_user.id,))
+    cursor.execute("SELECT rubles, profit_hour, premium_status FROM game WHERE user_id = ?", (callback.from_user.id,))
     result = cursor.fetchone()
-    rubles, profit_hour = result
+    rubles, profit_hour, premium_status = result
+
+    if premium_status == "True":
+        business_price -= business_price * 0.1
 
     profit_hour += business_profit_hour
 
-    rubles_end = f"{rubles:,}".replace(",", ".")
-    business_price_end = f"{business_price:,}".replace(",", ".")
-    profit_hour_end = f"{profit_hour:,}".replace(",", ".")
-
     if rubles < business_price:
         await callback.answer(show_alert=True,
-                              text=f"❌ К сожалению у вас недостаточно средств! ( {rubles_end} / {business_price_end} )")
+                              text=f"❌ К сожалению у вас недостаточно средств! ( {rubles:,} / {business_price:,} )")
         return
 
     cursor.execute("UPDATE game SET rubles = ?, profit_hour = ? WHERE user_id = ?",
@@ -167,5 +183,5 @@ async def callbacks_business_info_(callback: CallbackQuery):
 
     await bot.edit_message_caption(message_id=callback.message.message_id, chat_id=callback.message.chat.id,
                                    caption=f"✔ Вы успешно приобрели бизнес <b>{business_name}</b>, поздравляем! 🎉\n"
-                                           f"Теперь ваша прибыль со всех бизнесов составляет: <u>{profit_hour_end}</u>₽/ч 💸\n\n"
+                                           f"Теперь ваша прибыль со всех бизнесов составляет: <u>{profit_hour:,}</u>₽/ч 💸\n\n"
                                            f"👤 Посмотреть бизнес можно по команде <u><b>/my_business</b></u>")

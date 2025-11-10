@@ -19,10 +19,17 @@ from handlers.profile import profile
 from handlers.registration import registration
 from handlers.shop import shop
 from handlers.shop_business import shop_business
+from handlers.case_shop import case_shop
 from handlers.start import start
 from handlers.referal import referal
 from handlers.top import top
 from handlers.change_date import change_date
+from handlers.inventory import inventory
+from handlers.donate import donate
+from handlers.daily_reward import daily_reward
+from handlers.balance import balance
+from handlers.promo import promo
+# from handlers.help import help
 
 from handlers.clans.clan_create import clan_create
 from handlers.clans.my_clan import my_clan
@@ -32,6 +39,7 @@ from handlers.clans.clan_settings import clan_settings
 from handlers.casino import casino
 from handlers.blackjack import blackjack
 from handlers.poker import poker
+from handlers.admin_panel import admin_panel
 
 
 # Middleware с rate_limit и проверкой регистрации + защитой кнопок
@@ -41,7 +49,8 @@ class Middleware(BaseMiddleware):
     def __init__(self, rate_limit: float = RATE_LIMIT) -> None:
         super().__init__()
         self.rate_limit = rate_limit
-        self.cache: TTLCache[int, None] = TTLCache(maxsize=10000, ttl=rate_limit)
+        self.cache: TTLCache[int, None] = TTLCache(
+            maxsize=10000, ttl=rate_limit)
 
     async def __call__(
             self,
@@ -58,16 +67,14 @@ class Middleware(BaseMiddleware):
                 return  # Блокируем, если слишком часто
             self.cache[user.id] = None
 
-        # Проверка регистрации
-        current_state = await state.get_state() if state else None
-        is_registered = await self.is_registered(user.id) if user else True
+        cursor.execute("SELECT ban FROM user WHERE user_id = ?", (user.id,))
+        ban = cursor.fetchone()
 
-        if not is_registered and current_state is None:
-            if hasattr(m, "text"):
-                if m.text not in ["/рег", "/регистрация", "/registration", "/reg"] or not (m.text.startswith("/start")):
-                    return await handler(m, data)
+        if ban and ban[0] == "True":
+            return
 
-        cursor.execute("SELECT premium_until FROM game WHERE user_id = ?", (user.id,))
+        cursor.execute(
+            "SELECT premium_until FROM game WHERE user_id = ?", (user.id,))
         result = cursor.fetchone()
         if result:
             premium_until = result[0]
@@ -98,11 +105,32 @@ class Middleware(BaseMiddleware):
 
                     break  # нашли число — проверили и хватит
 
-        return await handler(m, data)
+        try:
+            return await handler(m, data)
+
+        except Exception as e:
+            import traceback
+
+            user_text = getattr(m, "text", None)
+            command_used = user_text if user_text else getattr(m, "data", None)
+
+            error_text = (
+                f"⚠️ Ошибка в Middleware\n"
+                f"Пользователь: {user.id if user else 'Unknown'}\n"
+                f"Команда: {command_used}\n\n"
+                f"<pre>{traceback.format_exc()}</pre>"
+            )
+
+            try:
+                await bot.send_message(chat_id=6358045048, text=error_text)
+                await bot.send_message(chat_id=m.from_user.idm, text="🚫 К сожалению произошла ошибка. Я уже передал её создателю, ожидайте исправления!")
+            except:
+                pass  # чтобы не упал повторно при невозможности отправить
 
     @staticmethod
     async def is_registered(user_id: int) -> bool:
-        cursor.execute("SELECT user_id FROM user WHERE user_id = ?", (user_id,))
+        cursor.execute(
+            "SELECT user_id FROM user WHERE user_id = ?", (user_id,))
         return cursor.fetchone() is not None
 
 
@@ -119,10 +147,17 @@ async def main():
     dp.include_router(my_business)
     dp.include_router(shop)
     dp.include_router(shop_business)
+    dp.include_router(case_shop)
     dp.include_router(farm)
     dp.include_router(referal)
     dp.include_router(top)
     dp.include_router(change_date)
+    dp.include_router(inventory)
+    dp.include_router(donate)
+    dp.include_router(daily_reward)
+    dp.include_router(balance)
+    dp.include_router(promo)
+    # dp.include_router(help)
 
     dp.include_router(my_clan)
     dp.include_router(clan_kb)
@@ -133,11 +168,13 @@ async def main():
     dp.include_router(blackjack)
     dp.include_router(poker)
 
+    dp.include_router(admin_panel)
+
     dp.message.outer_middleware(Middleware())
     dp.callback_query.outer_middleware(Middleware())
 
-    await bot.send_message(1409698085, "Бот запущен ✅")
-    await dp.start_polling(bot)
+    await bot.send_message(6358045048, "Бот запущен ✅")
+    await dp.start_polling(bot, skip_updates=True)
 
 
 if __name__ == "__main__":

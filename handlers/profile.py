@@ -13,7 +13,9 @@ profile = Router()
 @profile.message(F.text.casefold() == "профиль")
 @profile.message(Command(commands="profile"))
 async def cmd_profile(message: Message | CallbackQuery):
-    cursor.execute("SELECT rubles, dollars, bitcoins, profit_hour, premium_status, premium_until FROM game WHERE user_id = ?", (message.from_user.id,))
+    cursor.execute(
+        "SELECT rubles, dollars, bitcoins, profit_hour, premium_status, premium_until FROM game WHERE user_id = ?",
+        (message.from_user.id,))
     result = cursor.fetchone()
 
     rubles, dollars, bitcoins, profit_hour, premium_status, premium_until = result
@@ -23,12 +25,13 @@ async def cmd_profile(message: Message | CallbackQuery):
 
     name_user = result[0]
 
-    cursor.execute("SELECT business_id, business_name, business_profit_hour, business_level FROM business WHERE user_id = ?", (message.from_user.id,))
+    cursor.execute(
+        "SELECT business_id, business_name, business_profit_hour, business_level FROM business WHERE user_id = ?",
+        (message.from_user.id,))
     result = cursor.fetchall()
 
-    text_message = [f"Профиль <b>{name_user}</b>:\n\n"]
-
     if premium_status == "True":
+        name_user = f"<b><u>[PREMIUM]</u></b> {name_user}"
         now = int(time.time())
         remaining = premium_until - now
 
@@ -38,8 +41,9 @@ async def cmd_profile(message: Message | CallbackQuery):
     else:
         premium_status = "неактивна ❌"
 
-    for business_id, business_name, business_profit_hour, business_level in result:
+    text_message = [f"<b>{name_user}</b>:\n\n"]
 
+    for business_id, business_name, business_profit_hour, business_level in result:
         text_message.append(
             f"━━━━━━━━━━━━━━━\n"
             f"{business_id}. <b>{business_name}</b>\n"
@@ -48,7 +52,7 @@ async def cmd_profile(message: Message | CallbackQuery):
         )
 
     text_message.append(f"━━━━━━━━━━━━━━━\n\n")
-    text_message.append(f"💰 Общая прибыль: <u>{profit_hour:,}</u> ₽/ч\n")
+    text_message.append(f"💰 Общая прибыль: <u>{profit_hour:,}</u>₽/ч\n")
     text_message.append(f"💳 Баланс рублей: <u>{rubles:,}</u>₽\n")
     text_message.append(f"💵 Баланс долларов: <u>{dollars:,}</u>$\n")
     text_message.append(f"💹 Баланс биткоинов: <u>{round(bitcoins, 1):,}</u>₿\n")
@@ -63,6 +67,16 @@ async def cmd_profile(message: Message | CallbackQuery):
             ]
         ]
     )
+
+    cursor.execute("SELECT tutorial FROM game WHERE user_id = ?", (message.from_user.id,))
+    tutorial = cursor.fetchone()[0]
+
+    if tutorial == 3:
+        cursor.execute("UPDATE game SET tutorial = '4' WHERE user_id = ?", (message.from_user.id,))
+        conn.commit()
+
+        text_message.append("📜 Тут указывается вся ваша информация включая ваши бизнесы и баланс.\n"
+                            "Давайте перейдем в список бизнесов. Введите команду <u><b>/my_business</b></u>")
 
     text_message = "".join(text_message)
 

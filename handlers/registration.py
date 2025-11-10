@@ -12,10 +12,8 @@ registration = Router()  # [1]
 
 
 def db_table_user(user_id, name_profile, name_bot, age):
-    cursor.execute("INSERT INTO user (user_id, name_profile, name_bot, age) VALUES (?, ?, ?, ?)",
+    cursor.execute("INSERT INTO user (user_id, name_profile, name_bot, age) VALUES (, ?, ?, ?)",
                    (user_id, name_profile, name_bot, age))
-    conn.commit()
-
     cursor.execute("INSERT INTO game (user_id) VALUES (?)", (user_id,))
     conn.commit()
 
@@ -58,7 +56,8 @@ async def process_name(message: Message, state: FSMContext):
     inline_kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_registration__{message.from_user.id}"),
+                InlineKeyboardButton(text="✅ Подтвердить",
+                                     callback_data=f"confirm_registration__{message.from_user.id}"),
                 InlineKeyboardButton(text="🔄 Изменить", callback_data=f"change_registration__{message.from_user.id}")
             ]
         ]
@@ -71,7 +70,7 @@ async def process_name(message: Message, state: FSMContext):
 
 
 @registration.callback_query(F.data.startswith("change_registration_"))
-async def handle_cancel(callback: CallbackQuery, state: FSMContext):
+async def handle_cancel(callback: CallbackQuery):
     await callback.message.edit_text("Игрок, введи своё имя! Допустимы только русские или английские буквы.")
 
 
@@ -112,20 +111,6 @@ async def process_name(message: Message, state: FSMContext):
     await state.clear()
 
     if invited_id:
-        cursor.execute("SELECT referal_count, referal_level FROM game WHERE user_id = ?", (invited_id,))
-        result = cursor.fetchone()
-
-        referal_count = int(result[0])
-        referal_level = int(result[1])
-
-        referal_count += 1
-
-        if referal_count == referal_level * 10:
-            referal_level += 1
-            referal_count = 0
-
-        cursor.execute("UPDATE game SET referal_level = ?, referal_count = ? WHERE user_id = ?", (referal_level, referal_count, invited_id))
-        conn.commit()
 
         db_table_user(message.from_user.id, message.from_user.first_name, name, user_age)
 
@@ -136,10 +121,41 @@ async def process_name(message: Message, state: FSMContext):
                             f"✔Вы успешно зарегистрировались по реферальной ссылке и получили +100,000₽!\n"
                             f"💵 На вашем балансе 350,000₽, попробуйте посетить магазин (<u><b>/shop_business</b></u>)")
 
+        cursor.execute("SELECT rubles, referal_count, referal_level, referal_all FROM game WHERE user_id = ?", (invited_id,))
+        rubles, referal_count, referal_level, referal_all = cursor.fetchone()
+
+        if referal_count + 1 == referal_level * 5:
+            referal_count = 0
+            referal_all += 1
+            referal_level += 1
+
+            cursor.execute("UPDATE game SET rubles = ? WHERE user_id = ?",
+                           (rubles + referal_level * 100000, invited_id,))
+            conn.commit()
+
+            await bot.send_message(
+                chat_id=invited_id,
+                text=f"👤 <a href='tg://user?id={message.from_user.id}'>{name}</a> присоединился по вашей ссылке!\n"
+                     f"🌟 Ваш уровень рефералов повысился до {referal_level} уровня\n"
+                     f"💰 Вы получили: {referal_level * 100000:,}₽"
+            )
+
+        else:
+            referal_count += 1
+            referal_all += 1
+            await bot.send_message(
+                chat_id=invited_id,
+                text=f"👤 <a href='tg://user?id={message.from_user.id}'>{name}</a> присоединился по вашей ссылке!\n"
+            )
+
+        cursor.execute("UPDATE game SET referal_count = ?, referal_level = ?, referal_all = ? WHERE user_id = ?",
+                       (referal_count, referal_level, referal_all, invited_id,))
+        conn.commit()
+
         return
 
     await message.reply(f"👤 Отлично, возраст {user_age} сохранен.\n"
                         f"✔Вы успешно зарегистрировались!\n"
-                        f"💵 На вашем балансе 250,000₽, попробуйте посетить магазин (<u><b>/shop_business</b></u>)")
+                        f"💵 На вашем балансе 250,000₽, попробуйте посетить магазин (<u><b>/business</b></u>)")
 
     db_table_user(message.from_user.id, message.from_user.first_name, name, user_age)

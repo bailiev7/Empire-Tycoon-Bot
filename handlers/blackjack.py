@@ -19,7 +19,7 @@ FONT_PATH = "PlayfairDisplay.ttf"
 suit_map = {"H": "❤️", "S": "♠️", "D": "♦️", "C": "♣️"}
 card_values = {
     "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
-    "J": 10, "Q": 10, "K": 10, "A": 11
+    "j": 10, "q": 10, "k": 10, "a": 11
 }
 
 blackjack_timers = {}  # user_id -> asyncio.Task
@@ -31,33 +31,32 @@ class Blackjack(StatesGroup):
 
 # ======= Подсчет очков =======
 def hand_value(hand: list) -> int:
-    """Считаем очки в руке с учетом правил Блэкджека"""
+    """Считаем очки в руке с учетом правил Блэкджека (туз = 1 или 11) без изменения лежащих тузов"""
     value = 0
-    aces_as_eleven = 0
+    aces = 0
 
+    # Считаем все карты, тузы пока считаем как 11
     for card in hand:
         rank = card.replace("card_", "")
         for symbol in suit_map.values():
             rank = rank.replace(symbol, "")
         if rank.upper() == "A":
-            if aces_as_eleven < 2:
-                value += 11
-                aces_as_eleven += 1
-            else:
-                value += 1
+            aces += 1
+            value += 11
         else:
             value += card_values.get(rank.upper(), 0)
 
-    while value > 21 and aces_as_eleven > 0:
-        value -= 10
-        aces_as_eleven -= 1
+    # Корректируем только итоговую сумму для перебора
+    while value > 21 and aces > 0:
+        value -= 10  # уменьшаем 11 до 1
+        aces -= 1
 
     return value
 
 
 # ======= Генерация колоды =======
 def generate_deck() -> list:
-    ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+    ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a"]
     suits = ["H", "S", "D", "C"]
     deck = [f"card_{rank}{suit_map[s]}" for rank in ranks for s in suits]
     random.shuffle(deck)
@@ -334,13 +333,22 @@ async def game_turn(callback: CallbackQuery):
             else:
                 result = "🚫 Перебор! Вы проиграли."
 
+            inline_kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🃏 Играть снова",
+                                             callback_data=f"go_blackjack_{callback.from_user.id}"),
+                    ]
+                ]
+            )
+
             table_img = render_table(player_hand, dealer_hand, player_val, dealer_val, target_user_id, hide_dealer=False)
             await bot.edit_message_media(
                 chat_id=callback.message.chat.id,
                 message_id=callback.message.message_id,
                 media=InputMediaPhoto(media=FSInputFile(table_img),
                                       caption=f"{result}\n💰 Ставка была: {bet:,}₽\n💳 Баланс: {rubles:,}₽"),
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[])
+                reply_markup=inline_kb
             )
             cursor.execute("UPDATE game SET rubles=? WHERE user_id=?", (rubles, target_user_id))
             cursor.execute("DELETE FROM blackjack WHERE user_id=?", (target_user_id,))
@@ -377,13 +385,22 @@ async def game_turn(callback: CallbackQuery):
         else:
             result = "🚫 Вы проиграли!"
 
+        inline_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="🃏 Играть снова",
+                                         callback_data=f"go_blackjack_{callback.from_user.id}"),
+                ]
+            ]
+        )
+
         table_img = render_table(player_hand, dealer_hand, player_val, dealer_val, target_user_id, hide_dealer=False)
         await bot.edit_message_media(
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
             media=InputMediaPhoto(media=FSInputFile(table_img),
                                   caption=f"{result}\n💰 Ставка была: {bet:,}₽\n💳 Баланс: {rubles:,}₽"),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[])
+            reply_markup=inline_kb
         )
         cursor.execute("UPDATE game SET rubles=? WHERE user_id=?", (rubles, target_user_id))
         cursor.execute("DELETE FROM blackjack WHERE user_id=?", (target_user_id,))

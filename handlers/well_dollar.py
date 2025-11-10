@@ -48,9 +48,25 @@ async def cmd_well_dollars(message: Message | CallbackQuery):
                     ]
                 )
 
-                text = (f"💵 Курс доллара ЦБ РФ:\n\n"
-                        f"{emodz} 1 USD = {usd:.2f} ₽ {trend}\n"
-                        f"(вчера было {prev:.2f} ₽)")
+                cursor.execute("SELECT tutorial FROM game WHERE user_id = ?", (message.from_user.id,))
+                result = cursor.fetchone()
+
+                tutorial = result[0]
+
+                if tutorial == 6:
+                    cursor.execute("UPDATE game SET tutorial = '7' WHERE user_id = ?", (message.from_user.id,))
+                    conn.commit()
+
+                    text = (f"💵 Курс доллара ЦБ РФ:\n\n"
+                            f"{emodz} 1 USD = {usd:.2f} ₽ {trend}\n"
+                            f"(вчера было {prev:.2f} ₽)\n\n"
+                            f"📜 Тут ты можешь посмотреть актуальный курс доллара центробанка и обменять рубли на доллары согласно курсу, но с небольшой комиссией\n\n"
+                            f"Следующим шагом будет статистика. Вееди <u><b>/top</b></u>")
+
+                else:
+                    text = (f"💵 Курс доллара ЦБ РФ:\n\n"
+                            f"{emodz} 1 USD = {usd:.2f} ₽ {trend}\n"
+                            f"(вчера было {prev:.2f} ₽)")
 
                 if isinstance(message, Message):
                     await message.reply(
@@ -135,8 +151,8 @@ async def cmd_check_dollars(message: Message | CallbackQuery):
                                                  callback_data=f"buy_dollars_{select}_{message.from_user.id}"),
                         ],
                         [
-                            InlineKeyboardButton(text="Своя сумма",
-                                                 callback_data=f"buy_select_dollars_{message.from_user.id}"),
+                            #InlineKeyboardButton(text="Своя сумма",
+                             #                    callback_data=f"buy_select_dollars_{message.from_user.id}"),
                             InlineKeyboardButton(text="◀ Назад",
                                                  callback_data=f"dollars_{message.from_user.id}")
                         ]

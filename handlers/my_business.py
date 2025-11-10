@@ -117,6 +117,18 @@ async def render_businesses(user_id: int, message: Message | CallbackQuery):
         [InlineKeyboardButton(text="🚀 Собрать всё", callback_data=f"collect_all_{user_id}")]
     )
 
+    cursor.execute("SELECT tutorial FROM game WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+
+    tutorial = result[0]
+
+    if tutorial == 4:
+        cursor.execute("UPDATE game SET tutorial = '5' WHERE user_id = ?", (user_id,))
+        conn.commit()
+
+        business_texts.append("🏢 Здесь список твоих бизнесов. Отсюда можно собирать прибыль и улучшать бизнесы. За улучшения ты начнешь получать особую валюту - BTC (биткоины).\n"
+                              "Идем дальше. Введи команду <b><u>/bonus</u></b>")
+
     text_message = "\n\n".join(business_texts)
 
     if isinstance(message, Message):
@@ -215,6 +227,7 @@ def get_business_info_markup(business_id: int, user_id: int):
 
     else:
         premium_text = ""
+
 
     caption = (
         f"ℹ️ <b>Информация о бизнесе</b>\n\n"
@@ -337,7 +350,6 @@ async def collect_business(callback: CallbackQuery):
 
             else:
                 rubles = rubles + total_rubles
-
 
             cursor.execute(
                 "UPDATE game SET rubles = ?, bitcoins = ? WHERE user_id = ?",

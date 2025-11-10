@@ -281,7 +281,7 @@ async def cmd_clan_add_friend(callback: CallbackQuery):
         )
         return
 
-    invite_link = f"https://t.me/Test_TTF_bot?start=clan_{clan_id}_from_{callback.from_user.id}"
+    invite_link = f"https://t.me/Empire_Tycoon_Bot?start=clan_{clan_id}_from_{callback.from_user.id}"
 
     await bot.send_message(
         chat_id=callback.message.chat.id,

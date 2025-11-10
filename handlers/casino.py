@@ -11,6 +11,7 @@ casino = Router()
 
 
 @casino.message(F.text.casefold() == "казино")
+@casino.message(Command(commands="casino"))
 async def cmd_casino(message: Message):
 
     inline_kb = InlineKeyboardMarkup(

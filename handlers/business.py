@@ -40,18 +40,21 @@ async def cmd_business(message: Message):
                             f"Вы можете нажать кнопку ниже для приобретения",
                             reply_markup=inline_kb)
 
-    elif tutorial == 3:
-        await message.reply("")
-
-    else:
-        await message.reply("❌ Вы сейчас на другом этапе обучения!")
-
 
 @business.callback_query(F.data.startswith("buy_1_business_"))
 async def callbacks_num(callback: CallbackQuery):
     action = callback.data.split("_")
 
     user_id = action[3]
+
+    cursor.execute("SELECT tutorial FROM game WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+
+    tutorial = result[0]
+
+    if tutorial != 0:
+        await callback.answer("❌ Сейчас вы на другом этапе обучения!")
+        return
 
     cursor.execute("SELECT rubles FROM game WHERE user_id == ?", (user_id,))
     result = cursor.fetchone()
@@ -61,13 +64,19 @@ async def callbacks_num(callback: CallbackQuery):
         await callback.answer("❌ У вас недостаточно средств!")
         return
 
-    cursor.execute("UPDATE game SET rubles = ?, profit_hour = '20000', tutorial = '1' WHERE user_id = ?",
-                   (rubles - 250000, callback.from_user.id,))
+    cursor.execute("SELECT profit_hour FROM game WHERE user_id = ?", (user_id,))
+    profit_hour = cursor.fetchone()[0]
+
+    cursor.execute("UPDATE game SET rubles = ?, profit_hour = ?, tutorial = '1' WHERE user_id = ?",
+                   (rubles - 250000, profit_hour+20000, callback.from_user.id,))
     conn.commit()
 
     now_time = int(time.time())
 
     db_table_business(callback.from_user.id, 1, "Шаурмечная", 20000, now_time)
+
+    cursor.execute("UPDATE game SET tutorial = '2' WHERE user_id = ?", (user_id,))
+    conn.commit()
 
     await callback.message.edit_text("✔ Вы успешно приобрели свой первый бизнес. Поздравляем! 🎉\n"
                                      "Ваша прибыль в час составляет: 20.000 рублей 🤑\n\n\n"
